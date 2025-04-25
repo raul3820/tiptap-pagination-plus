@@ -156,7 +156,6 @@ function createDecoration(state: EditorState, pageOptions: PaginationPlusOptions
 
       const page = pageBreakDefinition({firstPage: false, lastPage: false});
       const firstPage = pageBreakDefinition({firstPage: true, lastPage: false});
-      const lastPage = pageBreakDefinition({firstPage: false, lastPage: true});
       const fragment = document.createDocumentFragment()
       
       // fragment.appendChild(firstPage);
