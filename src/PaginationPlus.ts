@@ -9,6 +9,7 @@ interface PaginationPlusOptions {
   pageBreakBackground: string;
   pageHeaderHeight: number;
   pageGapBorderSize: number;
+  footerText: string;
 }
 const pagination_meta_key = "PAGINATION_META_KEY";
 export const PaginationPlus = Extension.create<PaginationPlusOptions>({
@@ -20,6 +21,7 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       pageGapBorderSize: 1,
       pageBreakBackground: "#ffffff",
       pageHeaderHeight: 10,
+      footerText: ""
     };
   },
   onCreate() {
@@ -27,34 +29,26 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
     targetNode.classList.add("rm-with-pagination");
     const config = { attributes: true };
 
-    // Create style element and write style
-    // append to head
     const style = document.createElement('style');
     style.dataset.rmPaginationStyle = '';
     style.textContent = `
       .rm-with-pagination {
-        counter-reset: page-number; /* Initialize the counter */
+        counter-reset: page-number;
       }
       .rm-with-pagination .page-footer::before {
-        counter-increment: page-number; /* Increment the counter */
-        content: counter(page-number); /* Display the counter */
+        counter-increment: page-number;
       }
-      .rm-with-pagination .rm-page-header::before { 
-      /* Increment the counter */
-        content: "Provide by Alex"; /* Display the counter */
+      .rm-with-pagination .page-footer::before {
+        content: counter(page-number); 
+        position: absolute;
+        right: 25px;
+        top: 5px;
       }
-      .rm-with-pagination .page-footer {
-        padding-left: 17px;
-        padding-right: 17px;
-        display: flex;
-        align-items: center;
-      }
-      .rm-with-pagination .rm-page-header {
-        padding-left: 17px;
-        padding-right: 17px;
-        display: flex;
-         justify-content: flex-end;
-        align-items: center;
+      .rm-with-pagination .page-footer::after {
+        content: "${this.options.footerText}"; 
+        position: absolute;
+        left: 25px;
+        top: 5px;
       }
       .rm-with-pagination .rm-page-break.last-page ~ .rm-page-break {
         display: none;
@@ -72,11 +66,8 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
     const _pageGapBorderSize = this.options.pageGapBorderSize;
     const _pageHeaderHeight = this.options.pageHeaderHeight;
 
-    const callback = (
-      mutationList: MutationRecord[],
-      observer: MutationObserver
-    ) => {
-      if (!targetNode.classList.contains("rm-with-pagination")) return;
+    const refreshPage = (targetNode: HTMLElement) => {
+      
       const target = Array.from(targetNode.children).find((child) => child.id === "pages");
       if (!target) return;
 
@@ -106,11 +97,22 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       if (maxPage + 1 in target.children) {
         target.children[maxPage + 1].classList.add('last-page');
       }
+    }
 
+    const callback = (
+      mutationList: MutationRecord[],
+      observer: MutationObserver
+    ) => {
+      if(mutationList.length > 0 && mutationList[0].target) {
+        const _target = mutationList[0].target as HTMLElement;
+        if(_target.classList.contains("rm-with-pagination")) {
+          refreshPage(_target);
+        }
+      }
     };
     const observer = new MutationObserver(callback);
     observer.observe(targetNode, config);
-
+    refreshPage(targetNode);
     this.editor.view.dispatch(
       this.editor.view.state.tr.setMeta(pagination_meta_key, true)
     );
