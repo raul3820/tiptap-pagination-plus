@@ -30,7 +30,12 @@ export const PaginationPlus = Extension.create({
         counter-increment: page-number; /* Increment the counter */
         content: counter(page-number); /* Display the counter */
       }
-        
+      .rm-with-pagination .page-footer {
+        padding-left: 17px;
+        padding-right: 17px;
+        display: flex;
+        align-items: center;
+      }
       .rm-with-pagination .rm-page-break.last-page ~ .rm-page-break {
         display: none;
       }
