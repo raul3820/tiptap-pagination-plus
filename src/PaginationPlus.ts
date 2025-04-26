@@ -39,10 +39,21 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
         counter-increment: page-number; /* Increment the counter */
         content: counter(page-number); /* Display the counter */
       }
+      .rm-with-pagination .rm-page-header::before { 
+      /* Increment the counter */
+        content: "Provide by Alex"; /* Display the counter */
+      }
       .rm-with-pagination .page-footer {
         padding-left: 17px;
         padding-right: 17px;
         display: flex;
+        align-items: center;
+      }
+      .rm-with-pagination .rm-page-header {
+        padding-left: 17px;
+        padding-right: 17px;
+        display: flex;
+         justify-content: flex-end;
         align-items: center;
       }
       .rm-with-pagination .rm-page-break.last-page ~ .rm-page-break {
@@ -88,15 +99,14 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
         }
       }
       const maxPage = Math.max(...Array.from(pagesWithContent as Set<number>));
-      const _maxPage = maxPage  + 2;
-      targetNode.style.minHeight = `${
-        (_maxPage * this.options.pageHeight) +
+      const _maxPage = maxPage + 2;
+      targetNode.style.minHeight = `${(_maxPage * this.options.pageHeight) +
         ((_maxPage - 1) * (_pageGap + (2 * _pageGapBorderSize)))
-      }px`;
-      if(maxPage + 1 in  target.children){
+        }px`;
+      if (maxPage + 1 in target.children) {
         target.children[maxPage + 1].classList.add('last-page');
       }
-      
+
     };
     const observer = new MutationObserver(callback);
     observer.observe(targetNode, config);

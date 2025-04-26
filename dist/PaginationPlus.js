@@ -30,10 +30,21 @@ export const PaginationPlus = Extension.create({
         counter-increment: page-number; /* Increment the counter */
         content: counter(page-number); /* Display the counter */
       }
+      .rm-with-pagination .rm-page-header::before { 
+      /* Increment the counter */
+        content: "Provide by Alex"; /* Display the counter */
+      }
       .rm-with-pagination .page-footer {
         padding-left: 17px;
         padding-right: 17px;
         display: flex;
+        align-items: center;
+      }
+      .rm-with-pagination .rm-page-header {
+        padding-left: 17px;
+        padding-right: 17px;
+        display: flex;
+         justify-content: flex-end;
         align-items: center;
       }
       .rm-with-pagination .rm-page-break.last-page ~ .rm-page-break {
