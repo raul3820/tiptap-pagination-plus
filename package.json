@@ -13,13 +13,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@tiptap/core": "^2.11.7",
-    "@tiptap/pm": "^2.11.7",
-    "@tiptap/starter-kit": "^2.11.7"
+    "@tiptap/core": "^2.2.4",
+    "@tiptap/pm": "^2.2.4"
   },
   "devDependencies": {
     "@types/node": "^22.15.2",
-    "typescript": "^5.8.3",
-    "tsc-watch": "^6.0.4"
+    "tsc-watch": "^6.0.4",
+    "typescript": "^5.8.3"
   }
 }

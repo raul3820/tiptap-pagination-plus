@@ -228,5 +228,9 @@ function createDecoration(state, pageOptions) {
         el.style.height = `${pageOptions.pageHeaderHeight}px`;
         return el;
     }, { side: 1 });
-    return [pageWidget, firstHeaderWidget, lastFooterWidget];
+    return [
+        pageWidget,
+        firstHeaderWidget,
+        lastFooterWidget
+    ];
 }

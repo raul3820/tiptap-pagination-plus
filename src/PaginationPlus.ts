@@ -117,7 +117,6 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       this.editor.view.state.tr.setMeta(pagination_meta_key, true)
     );
   },
-
   addProseMirrorPlugins() {
     const pageOptions = this.options;
     return [
@@ -298,5 +297,9 @@ function createDecoration(
     },
     { side: 1 }
   );
-  return [pageWidget, firstHeaderWidget, lastFooterWidget];
+  return [
+    pageWidget,
+    firstHeaderWidget,
+    lastFooterWidget
+  ];
 }
