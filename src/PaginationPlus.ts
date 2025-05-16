@@ -1,5 +1,5 @@
 // DecorativeDecoration.ts
-import { Editor, Extension } from "@tiptap/core";
+import { Extension } from "@tiptap/core";
 import { EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
@@ -28,6 +28,8 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
     const targetNode = this.editor.view.dom;
     targetNode.classList.add("rm-with-pagination");
     const config = { attributes: true };
+    const _pageHeaderHeight = this.options.pageHeaderHeight;
+    const _pageHeight = this.options.pageHeight - (_pageHeaderHeight * 2);
 
     const style = document.createElement('style');
     style.dataset.rmPaginationStyle = '';
@@ -35,16 +37,16 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       .rm-with-pagination {
         counter-reset: page-number;
       }
-      .rm-with-pagination .page-footer::before {
+      .rm-with-pagination .rm-page-footer::before {
         counter-increment: page-number;
       }
-      .rm-with-pagination .page-footer::before {
+      .rm-with-pagination .rm-page-footer::before {
         content: counter(page-number); 
         position: absolute;
         right: 25px;
         top: 5px;
       }
-      .rm-with-pagination .page-footer::after {
+      .rm-with-pagination .rm-page-footer::after {
         content: "${this.options.footerText}"; 
         position: absolute;
         left: 25px;
@@ -59,12 +61,41 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       .rm-with-pagination .rm-page-break.last-page .rm-page-header {
         display: none;
       }
+      .rm-with-pagination table tbody > tr > td {
+        width: calc(100% / var(--cell-count));
+        word-break: break-all;
+      }
+      .rm-with-pagination table > tr {
+        display: grid;
+        min-width: 100%;
+      }
+      .rm-with-pagination table {
+        border-collapse: collapse;
+        width: 100%;
+        display: contents;
+      }
+      .rm-with-pagination table tbody{
+        display: table;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .rm-with-pagination table tbody > tr{
+        display: table-row !important;
+      }
+      .rm-with-pagination p:has(br.ProseMirror-trailingBreak:only-child) {
+        @apply table w-full;
+      }
+      .rm-with-pagination .table-row-group {
+        max-height: ${_pageHeight}px;
+        overflow-y: auto;
+        width: 100%;
+      }
     `;
     document.head.appendChild(style);
 
     const _pageGap = this.options.pageGap;
     const _pageGapBorderSize = this.options.pageGapBorderSize;
-    const _pageHeaderHeight = this.options.pageHeaderHeight;
+    
 
     const refreshPage = (targetNode: HTMLElement) => {
       
@@ -89,7 +120,8 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
           }
         }
       }
-      const maxPage = Math.max(...Array.from(pagesWithContent as Set<number>));
+      const maxPage = pagesWithContent.size > 0 ? Math.max(...Array.from(pagesWithContent as Set<number>)) : 0;
+      
       const _maxPage = maxPage + 2;
       targetNode.style.minHeight = `${(_maxPage * this.options.pageHeight) +
         ((_maxPage - 1) * (_pageGap + (2 * _pageGapBorderSize)))
@@ -143,17 +175,6 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
           decorations(state: EditorState) {
             return this.getState(state) as DecorationSet;
           },
-          handlePaste: (view, event, slice) => {
-            // Let the default paste handler run first
-            const result = view.dispatch(view.state.tr.replaceSelection(slice));
-
-            // After paste, trigger decoration update
-            setTimeout(() => {
-              view.dispatch(view.state.tr.setMeta(pagination_meta_key, true));
-            }, 0);
-
-            return result;
-          },
         },
       }),
     ];
@@ -195,7 +216,8 @@ function createDecoration(
         previousPageCount * (totalPageGap + _pageGapBorderSize * 2);
       let pages = Math.ceil(actualPageContentHeight / _pageHeight);
       pages = pages > 0 ? pages - 1 : 0;
-      const breakerWidth = view.dom.scrollWidth;
+      const breakerWidth = view.dom.clientWidth;
+      
 
       const el = document.createElement("div");
       el.dataset.rmPagination = "true";
@@ -232,7 +254,7 @@ function createDecoration(
         pageBreak.style.zIndex = "2";
 
         const pageFooter = document.createElement("div");
-        pageFooter.classList.add("page-footer");
+        pageFooter.classList.add("rm-page-footer");
         pageFooter.style.height = _pageHeaderHeight + "px";
 
         const pageSpace = document.createElement("div");
