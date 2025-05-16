@@ -1,6 +1,6 @@
 {
   "name": "tiptap-pagination-plus",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Tiptap table extra options like duplicate column, duplicate row etc...",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,5 +28,9 @@
   "bugs": {
     "url": "https://github.com/RomikMakavana/tiptap-pagination-plus/issues"
   },
-  "homepage": "https://romikmakavana.me/tiptap-pagination/"
+  "homepage": "https://romikmakavana.me/tiptap-pagination/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RomikMakavana/tiptap-pagination-plus"
+  }
 }
