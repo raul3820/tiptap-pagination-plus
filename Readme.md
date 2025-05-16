@@ -2,6 +2,10 @@
 
 A TipTap extension that adds pagination support to your editor with table handling capabilities.
 
+# Demo
+
+https://romikmakavana.me/tiptap-pagination/
+
 ## Installation
 
 ```bash
