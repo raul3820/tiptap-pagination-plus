@@ -61,7 +61,8 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       .rm-with-pagination .rm-page-break.last-page .rm-page-header {
         display: none;
       }
-      .rm-with-pagination table tbody > tr > td {
+      .rm-with-pagination table tr td,
+      .rm-with-pagination table tr th {
         width: calc(100% / var(--cell-count));
         word-break: break-all;
       }
