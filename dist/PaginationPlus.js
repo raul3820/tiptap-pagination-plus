@@ -73,7 +73,8 @@ export const PaginationPlus = Extension.create({
         display: table-row !important;
       }
       .rm-with-pagination p:has(br.ProseMirror-trailingBreak:only-child) {
-        @apply table w-full;
+        display: table;
+        width: 100%;
       }
       .rm-with-pagination .table-row-group {
         max-height: ${_pageHeight}px;
