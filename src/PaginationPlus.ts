@@ -9,7 +9,10 @@ interface PaginationPlusOptions {
   pageBreakBackground: string;
   pageHeaderHeight: number;
   pageGapBorderSize: number;
-  footerText: string;
+  footerRight: string;
+  footerLeft: string;
+  headerRight: string;
+  headerLeft: string;
 }
 const pagination_meta_key = "PAGINATION_META_KEY";
 export const PaginationPlus = Extension.create<PaginationPlusOptions>({
@@ -21,7 +24,10 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       pageGapBorderSize: 1,
       pageBreakBackground: "#ffffff",
       pageHeaderHeight: 10,
-      footerText: ""
+      footerRight: "{page}",
+      footerLeft: "",
+      headerRight: "",
+      headerLeft: "",
     };
   },
   onCreate() {
@@ -33,24 +39,13 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
 
     const style = document.createElement('style');
     style.dataset.rmPaginationStyle = '';
+    
     style.textContent = `
       .rm-with-pagination {
         counter-reset: page-number;
       }
-      .rm-with-pagination .rm-page-footer::before {
+      .rm-with-pagination .rm-page-footer {
         counter-increment: page-number;
-      }
-      .rm-with-pagination .rm-page-footer::before {
-        content: counter(page-number); 
-        position: absolute;
-        right: 25px;
-        top: 5px;
-      }
-      .rm-with-pagination .rm-page-footer::after {
-        content: "${this.options.footerText}"; 
-        position: absolute;
-        left: 25px;
-        top: 5px;
       }
       .rm-with-pagination .rm-page-break.last-page ~ .rm-page-break {
         display: none;
@@ -90,6 +85,23 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
         max-height: ${_pageHeight}px;
         overflow-y: auto;
         width: 100%;
+      }
+      .rm-with-pagination .rm-page-footer-left,
+      .rm-with-pagination .rm-page-footer-right,
+      .rm-with-pagination .rm-page-header-left,
+      .rm-with-pagination .rm-page-header-right {
+        display: inline-block;
+      }
+      .rm-with-pagination .rm-page-footer-left{
+        float: left;
+        margin-left: 25px;
+      }
+      .rm-with-pagination .rm-page-footer-right{
+        float: right;
+        margin-right: 25px;
+      }
+      .rm-with-pagination .rm-page-number::before {
+        content: counter(page-number);
       }
     `;
     document.head.appendChild(style);
@@ -258,6 +270,21 @@ function createDecoration(
         pageFooter.classList.add("rm-page-footer");
         pageFooter.style.height = _pageHeaderHeight + "px";
 
+        const footerRight = pageOptions.footerRight.replace("{page}", `<span class="rm-page-number"></span>`);
+        const footerLeft = pageOptions.footerLeft.replace("{page}", `<span class="rm-page-number"></span>`);
+
+
+        const pageFooterLeft = document.createElement("div");
+        pageFooterLeft.classList.add("rm-page-footer-left");
+        pageFooterLeft.innerHTML = footerLeft;
+
+        const pageFooterRight = document.createElement("div");
+        pageFooterRight.classList.add("rm-page-footer-right");
+        pageFooterRight.innerHTML = footerRight;
+
+        pageFooter.append(pageFooterLeft);
+        pageFooter.append(pageFooterRight);
+
         const pageSpace = document.createElement("div");
         pageSpace.classList.add("rm-pagination-gap");
         pageSpace.style.height = _pageGap + "px";
@@ -273,6 +300,16 @@ function createDecoration(
         const pageHeader = document.createElement("div");
         pageHeader.classList.add("rm-page-header");
         pageHeader.style.height = _pageHeaderHeight + "px";
+
+        const pageHeaderLeft = document.createElement("div");
+        pageHeaderLeft.classList.add("rm-page-header-left");
+        pageHeaderLeft.innerHTML = pageOptions.headerLeft;
+
+        const pageHeaderRight = document.createElement("div");
+        pageHeaderRight.classList.add("rm-page-header-right");
+        pageHeaderRight.innerHTML = pageOptions.headerRight;
+
+        pageHeader.append(pageHeaderLeft, pageHeaderRight);
 
         pageBreak.append(pageFooter, pageSpace, pageHeader);
         pageContainer.append(page, pageBreak);

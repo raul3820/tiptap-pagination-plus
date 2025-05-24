@@ -5,7 +5,10 @@ interface PaginationPlusOptions {
     pageBreakBackground: string;
     pageHeaderHeight: number;
     pageGapBorderSize: number;
-    footerText: string;
+    footerRight: string;
+    footerLeft: string;
+    headerRight: string;
+    headerLeft: string;
 }
 export declare const PaginationPlus: Extension<PaginationPlusOptions, any>;
 export {};

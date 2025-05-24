@@ -41,7 +41,10 @@ const editor = new Editor({
       pageGap: 20,           // Gap between pages in pixels
       pageBreakBackground: "#f7f7f7",  // Background color for page gaps
       pageHeaderHeight: 50,   // Height of page header/footer in pixels
-      footerText: "Made with ❤️ by Romik"  // Custom footer text
+      footerRight: "Made with ❤️ by Romik",
+      footerLeft: "Page {page}",
+      headerLeft: "Header Left",
+      headerRight: "Header Right",
     }),
   ],
 })
@@ -62,13 +65,17 @@ Key points for table pagination:
 | `pageGap` | number | 20 | Gap between pages in pixels |
 | `pageBreakBackground` | string | "#f7f7f7" | Background color for page gaps |
 | `pageHeaderHeight` | number | 50 | Height of page header/footer in pixels |
-| `footerText` | string | "" | Custom text to display in the footer of each page |
+| `footerRight` | string | "" | Custom text to display in the footer right side |
+| `footerLeft` | string | "" | Custom text to display in the footer left side |
+| `headerRight` | string | "" | Custom text to display in the header right side |
+| `headerLeft` | string | "" | Custom text to display in the header left side |
 
 ### Features
 
 - Automatic page breaks based on content height
 - Page numbers in the footer
-- Custom footer text support
+- Custom header/footer text support
+- use `{page}` variable to display current page number in header/footer text
 - Table pagination with header preservation
 - Responsive design
 - Automatic page height calculation
