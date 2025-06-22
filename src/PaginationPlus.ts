@@ -1,7 +1,6 @@
-// DecorativeDecoration.ts
 import { Extension } from "@tiptap/core";
 import { EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { Decoration, DecorationSet, EditorView } from "@tiptap/pm/view";
 
 interface PaginationPlusOptions {
   pageHeight: number;
@@ -14,7 +13,7 @@ interface PaginationPlusOptions {
   headerRight: string;
   headerLeft: string;
 }
-const pagination_meta_key = "PAGINATION_META_KEY";
+const page_count_meta_key = "PAGE_COUNT_META_KEY";
 export const PaginationPlus = Extension.create<PaginationPlusOptions>({
   name: "PaginationPlus",
   addOptions() {
@@ -47,15 +46,13 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       .rm-with-pagination .rm-page-footer {
         counter-increment: page-number;
       }
-      .rm-with-pagination .rm-page-break.last-page ~ .rm-page-break {
+      .rm-with-pagination .rm-page-break:last-child .rm-pagination-gap {
         display: none;
       }
-      .rm-with-pagination .rm-page-break.last-page .rm-pagination-gap {
+      .rm-with-pagination .rm-page-break:last-child .rm-page-header {
         display: none;
       }
-      .rm-with-pagination .rm-page-break.last-page .rm-page-header {
-        display: none;
-      }
+      
       .rm-with-pagination table tr td,
       .rm-with-pagination table tr th {
         word-break: break-all;
@@ -119,49 +116,19 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
     `;
     document.head.appendChild(style);
 
-    const _pageGap = this.options.pageGap;
-    const _pageGapBorderSize = this.options.pageGapBorderSize;
-
     const refreshPage = (targetNode: HTMLElement) => {
-      const target = Array.from(targetNode.children).find(
-        (child) => child.id === "pages"
+      const paginationElement = targetNode.querySelector(
+        "[data-rm-pagination]"
       );
-      if (!target) return;
-
-      const pageElements = [
-        ...target.querySelectorAll(".page"),
-      ] as HTMLElement[];
-      const contentElements = [...targetNode.children] as HTMLElement[];
-
-      const pageTops = pageElements
-        .map((el) => el.offsetTop)
-        .filter((top) => top !== 0);
-
-      pageTops.push(Infinity); // to simplify range check for last page
-
-      const pagesWithContent = new Set();
-
-      for (let i = 2; i < contentElements.length - 1; i++) {
-        const top = contentElements[i].offsetTop;
-        for (let i = 0; i < pageTops.length - 1; i++) {
-          if (top >= pageTops[i] && top < pageTops[i + 1]) {
-            pagesWithContent.add(i + 1); // page index starting from 1
-            break;
-          }
+      if (paginationElement) {
+        const lastPageBreak = paginationElement.lastElementChild?.querySelector(
+          ".breaker"
+        ) as HTMLElement;
+        if (lastPageBreak) {
+          const minHeight =
+            lastPageBreak.offsetTop + lastPageBreak.offsetHeight;
+          targetNode.style.minHeight = `${minHeight}px`;
         }
-      }
-      const maxPage =
-        pagesWithContent.size > 0
-          ? Math.max(...Array.from(pagesWithContent as Set<number>))
-          : 0;
-
-      const _maxPage = maxPage + 2;
-      targetNode.style.minHeight = `${
-        _maxPage * this.options.pageHeight +
-        (_maxPage - 1) * (_pageGap + 2 * _pageGapBorderSize)
-      }px`;
-      if (maxPage + 1 in target.children) {
-        target.children[maxPage + 1].classList.add("last-page");
       }
     };
 
@@ -172,19 +139,27 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
       if (mutationList.length > 0 && mutationList[0].target) {
         const _target = mutationList[0].target as HTMLElement;
         if (_target.classList.contains("rm-with-pagination")) {
+          const currentPageCount = getExistingPageCount(this.editor.view);
+          const pageCount = calculatePageCount(this.editor.view, this.options);
+          if (currentPageCount !== pageCount) {
+            
+               const tr = this.editor.view.state.tr.setMeta(
+                 page_count_meta_key,
+                 Date.now()
+               );
+               this.editor.view.dispatch(tr);
+          }
+
           refreshPage(_target);
         }
       }
     };
     const observer = new MutationObserver(callback);
     observer.observe(targetNode, config);
-    refreshPage(targetNode);
-    this.editor.view.dispatch(
-      this.editor.view.state.tr.setMeta(pagination_meta_key, true)
-    );
   },
   addProseMirrorPlugins() {
     const pageOptions = this.options;
+    const editor = this.editor;
     return [
       new Plugin({
         key: new PluginKey("pagination"),
@@ -195,9 +170,9 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
             return DecorationSet.create(state.doc, widgetList);
           },
           apply(tr, oldDeco, oldState, newState) {
-            // Recalculate only on doc changes
-
-            if (tr.docChanged || tr.getMeta(pagination_meta_key)) {
+            const pageCount = calculatePageCount(editor.view, pageOptions);
+            const currentPageCount = getExistingPageCount(editor.view);
+            if (pageCount !== currentPageCount) {
               const widgetList = createDecoration(newState, pageOptions);
               return DecorationSet.create(newState.doc, [...widgetList]);
             }
@@ -214,42 +189,71 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
     ];
   },
 });
+
+const getExistingPageCount = (view: EditorView) => {
+  const editorDom = view.dom;
+  const paginationElement = editorDom.querySelector("[data-rm-pagination]");
+  if (paginationElement) {
+    return paginationElement.children.length;
+  }
+  return 0;
+};
+const calculatePageCount = (
+  view: EditorView,
+  pageOptions: PaginationPlusOptions
+) => {
+  const editorDom = view.dom;
+  const pageContentAreaHeight =
+    pageOptions.pageHeight - pageOptions.pageHeaderHeight * 2;
+  const paginationElement = editorDom.querySelector("[data-rm-pagination]");
+  const currentPageCount = getExistingPageCount(view);
+  if (paginationElement) {
+    const lastElementOfEditor = editorDom.lastElementChild;
+    const lastPageBreak =
+      paginationElement.lastElementChild?.querySelector(".breaker");
+    if (lastElementOfEditor && lastPageBreak) {
+      const lastPageGap =
+        lastElementOfEditor.getBoundingClientRect().bottom -
+        lastPageBreak.getBoundingClientRect().bottom;
+      if (lastPageGap > 0) {
+        const addPage = Math.ceil(lastPageGap / pageContentAreaHeight);
+        return currentPageCount + addPage;
+      } else {
+        const lpFrom = -pageOptions.pageHeaderHeight;
+        const lpTo = -(pageOptions.pageHeight - pageOptions.pageHeaderHeight);
+        if (lastPageGap > lpTo && lastPageGap < lpFrom) {
+          return currentPageCount;
+        } else if (lastPageGap < lpTo) {
+          const pageHeightOnRemove =
+            pageOptions.pageHeight + pageOptions.pageGap;
+          const removePage = Math.floor(lastPageGap / pageHeightOnRemove);
+          return currentPageCount + removePage;
+        } else {
+          return currentPageCount;
+        }
+      }
+    }
+    return 1;
+  } else {
+    const editorHeight = editorDom.scrollHeight;
+    const pageCount = Math.ceil(editorHeight / pageContentAreaHeight);
+    return pageCount <= 0 ? 1 : pageCount;
+  }
+};
+
 function createDecoration(
   state: EditorState,
-  pageOptions: PaginationPlusOptions
+  pageOptions: PaginationPlusOptions,
+  isInitial: boolean = false
 ): Decoration[] {
   const pageWidget = Decoration.widget(
     0,
     (view) => {
-      const _extraPages = 5;
       const _pageGap = pageOptions.pageGap;
       const _pageHeaderHeight = pageOptions.pageHeaderHeight;
       const _pageHeight = pageOptions.pageHeight - _pageHeaderHeight * 2;
       const _pageBreakBackground = pageOptions.pageBreakBackground;
-      const _pageGapBorderSize = pageOptions.pageGapBorderSize;
 
-      const childElements = view.dom.children;
-      let totalHeight = 0;
-
-      for (let i = 2; i < childElements.length - 1; i++) {
-        totalHeight += childElements[i].scrollHeight;
-      }
-
-      const paginationElement = document.querySelector("[data-rm-pagination]");
-
-      let previousPageCount = paginationElement
-        ? paginationElement.children.length
-        : 0;
-      previousPageCount =
-        previousPageCount > _extraPages ? previousPageCount - _extraPages : 0;
-
-      const totalPageGap = _pageGap + _pageHeaderHeight + _pageHeaderHeight;
-
-      let actualPageContentHeight =
-        totalHeight -
-        previousPageCount * (totalPageGap + _pageGapBorderSize * 2);
-      let pages = Math.ceil(actualPageContentHeight / _pageHeight);
-      pages = pages > 0 ? pages - 1 : 0;
       const breakerWidth = view.dom.clientWidth;
 
       const el = document.createElement("div");
@@ -310,6 +314,7 @@ function createDecoration(
         pageFooter.append(pageFooterLeft);
         pageFooter.append(pageFooterRight);
 
+
         const pageSpace = document.createElement("div");
         pageSpace.classList.add("rm-pagination-gap");
         pageSpace.style.height = _pageGap + "px";
@@ -335,7 +340,6 @@ function createDecoration(
         pageHeaderRight.innerHTML = pageOptions.headerRight;
 
         pageHeader.append(pageHeaderLeft, pageHeaderRight);
-
         pageBreak.append(pageFooter, pageSpace, pageHeader);
         pageContainer.append(page, pageBreak);
 
@@ -349,7 +353,9 @@ function createDecoration(
       });
       const fragment = document.createDocumentFragment();
 
-      for (let i = 0; i < pages + _extraPages; i++) {
+      const pageCount = calculatePageCount(view, pageOptions);
+
+      for (let i = 0; i < pageCount; i++) {
         if (i === 0) {
           fragment.appendChild(firstPage.cloneNode(true));
         } else {
@@ -386,14 +392,5 @@ function createDecoration(
     { side: -1 }
   );
 
-  const lastFooterWidget = Decoration.widget(
-    state.doc.content.size,
-    () => {
-      const el = document.createElement("div");
-      el.style.height = `${pageOptions.pageHeaderHeight}px`;
-      return el;
-    },
-    { side: 1 }
-  );
-  return [pageWidget, firstHeaderWidget, lastFooterWidget];
+  return !isInitial ? [pageWidget, firstHeaderWidget] : [pageWidget];
 }

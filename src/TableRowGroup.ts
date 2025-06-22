@@ -1,6 +1,6 @@
 import { Node } from "@tiptap/core";
 import { DOMOutputSpec } from "@tiptap/pm/model";
-import { Plugin } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
 export const TableRowGroup = Node.create({
@@ -33,6 +33,7 @@ export const TableRowGroup = Node.create({
     const { editor } = this;
     return [
       new Plugin({
+        key: new PluginKey("tableRowGroupKey"),
         appendTransaction(_, oldState, newState) {
           const { doc, tr } = newState;
 

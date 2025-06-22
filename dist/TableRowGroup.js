@@ -1,5 +1,5 @@
 import { Node } from "@tiptap/core";
-import { Plugin } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 export const TableRowGroup = Node.create({
     name: "tableRowGroup",
     group: "tableRowGroup",
@@ -29,6 +29,7 @@ export const TableRowGroup = Node.create({
         const { editor } = this;
         return [
             new Plugin({
+                key: new PluginKey("tableRowGroupKey"),
                 appendTransaction(_, oldState, newState) {
                     const { doc, tr } = newState;
                     let modified = false;
