@@ -128,6 +128,7 @@ export const PaginationPlus = Extension.create({
         };
         const observer = new MutationObserver(callback);
         observer.observe(targetNode, config);
+        refreshPage(targetNode);
     },
     addProseMirrorPlugins() {
         const pageOptions = this.options;
