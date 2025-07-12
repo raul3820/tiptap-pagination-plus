@@ -144,7 +144,7 @@ export const PaginationPlus = Extension.create({
                     apply(tr, oldDeco, oldState, newState) {
                         const pageCount = calculatePageCount(editor.view, pageOptions);
                         const currentPageCount = getExistingPageCount(editor.view);
-                        if (pageCount !== currentPageCount) {
+                        if ((pageCount > 1 ? pageCount : 1) !== currentPageCount) {
                             const widgetList = createDecoration(newState, pageOptions);
                             return DecorationSet.create(newState.doc, [...widgetList]);
                         }

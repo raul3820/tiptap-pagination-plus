@@ -12,7 +12,7 @@ https://romikmakavana.me/tiptap-pagination/
 
 ```bash
 npm install tiptap-pagination-plus
-```
+```  
 
 ## Usage
 
