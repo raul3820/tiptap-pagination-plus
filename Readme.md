@@ -37,14 +37,22 @@ const editor = new Editor({
     TableCellPlus,
     TableHeaderPlus,
     PaginationPlus.configure({
-      pageHeight: 842,        // Height of each page in pixels
-      pageGap: 20,           // Gap between pages in pixels
-      pageBreakBackground: "#f7f7f7",  // Background color for page gaps
-      pageHeaderHeight: 50,   // Height of page header/footer in pixels
-      footerRight: "Made with ❤️ by Romik",
-      footerLeft: "Page {page}",
-      headerLeft: "Header Left",
-      headerRight: "Header Right",
+      pageHeight: 800,        // Height of each page in pixels
+      pageGap: 50,            // Gap between pages in pixels
+      pageGapBorderSize: 1,   // Border size for page gaps
+      pageBreakBackground: "#ffffff",  // Background color for page gaps
+      pageHeaderHeight: 50,   // Height of page header in pixels
+      pageFooterHeight: 50,   // Height of page footer in pixels
+      footerRight: "{page}",  // Custom text to display in the footer right side
+      footerLeft: "",         // Custom text to display in the footer left side
+      headerRight: "",        // Custom text to display in the header right side
+      headerLeft: "",         // Custom text to display in the header left side
+      marginTop: 0,           // Top margin for pages
+      marginBottom: 0,        // Bottom margin for pages
+      marginLeft: 50,         // Left margin for pages
+      marginRight: 50,        // Right margin for pages
+      contentMarginTop: 0,    // Top margin for content within pages
+      contentMarginBottom: 0, // Bottom margin for content within pages
     }),
   ],
 })
@@ -61,14 +69,22 @@ Key points for table pagination:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `pageHeight` | number | 842 | Height of each page in pixels |
-| `pageGap` | number | 20 | Gap between pages in pixels |
-| `pageBreakBackground` | string | "#f7f7f7" | Background color for page gaps |
-| `pageHeaderHeight` | number | 50 | Height of page header/footer in pixels |
-| `footerRight` | string | "" | Custom text to display in the footer right side |
+| `pageHeight` | number | 800 | Height of each page in pixels |
+| `pageGap` | number | 50 | Gap between pages in pixels |
+| `pageGapBorderSize` | number | 1 | Border size for page gaps |
+| `pageBreakBackground` | string | "#ffffff" | Background color for page gaps |
+| `pageHeaderHeight` | number | 50 | Height of page header in pixels |
+| `pageFooterHeight` | number | 50 | Height of page footer in pixels |
+| `footerRight` | string | "{page}" | Custom text to display in the footer right side |
 | `footerLeft` | string | "" | Custom text to display in the footer left side |
 | `headerRight` | string | "" | Custom text to display in the header right side |
 | `headerLeft` | string | "" | Custom text to display in the header left side |
+| `marginTop` | number | 0 | Top margin for pages |
+| `marginBottom` | number | 0 | Bottom margin for pages |
+| `marginLeft` | number | 50 | Left margin for pages |
+| `marginRight` | number | 50 | Right margin for pages |
+| `contentMarginTop` | number | 0 | Top margin for content within pages |
+| `contentMarginBottom` | number | 0 | Bottom margin for content within pages |
 
 ### Features
 
