@@ -247,13 +247,13 @@ function createDecoration(state, pageOptions, isInitial = false) {
                 : _pageHeight + "px";
             const pageBreak = document.createElement("div");
             pageBreak.classList.add("breaker");
-            pageBreak.style.width = `calc(${breakerWidth}px + ${pageOptions.marginLeft}px + ${pageOptions.marginRight}px)`;
-            pageBreak.style.marginLeft = `calc(calc(calc(${breakerWidth}px - 100%) / 2) - calc(${breakerWidth}px - 100%))`;
-            pageBreak.style.marginRight = `calc(calc(calc(${breakerWidth}px - 100%) / 2) - calc(${breakerWidth}px - 100%))`;
+            pageBreak.style.width = `calc(100% + ${pageOptions.marginLeft}px + ${pageOptions.marginRight}px)`;
+            pageBreak.style.marginLeft = `-${pageOptions.marginLeft}px`;
+            pageBreak.style.marginRight = `-${pageOptions.marginRight}px`;
             pageBreak.style.position = "relative";
             pageBreak.style.float = "left";
             pageBreak.style.clear = "both";
-            pageBreak.style.left = `-${pageOptions.marginLeft}px`;
+            pageBreak.style.left = `0px`;
             pageBreak.style.right = `0px`;
             pageBreak.style.zIndex = "2";
             const pageFooter = document.createElement("div");
