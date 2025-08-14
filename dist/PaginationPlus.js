@@ -126,7 +126,7 @@ export const PaginationPlus = Extension.create({
                 }
             }
         };
-        const callback = (mutationList, observer) => {
+        const callback = (mutationList) => {
             if (mutationList.length > 0 && mutationList[0].target) {
                 const _target = mutationList[0].target;
                 if (_target.classList.contains("rm-with-pagination")) {
@@ -231,10 +231,9 @@ function createDecoration(state, pageOptions, isInitial = false) {
         const _pageFooterHeight = (pageOptions.pageFooterHeight + pageOptions.contentMarginBottom + pageOptions.marginBottom);
         const _pageHeight = pageOptions.pageHeight - _pageHeaderHeight - _pageFooterHeight;
         const _pageBreakBackground = pageOptions.pageBreakBackground;
-        const breakerWidth = view.dom.clientWidth;
         const el = document.createElement("div");
         el.dataset.rmPagination = "true";
-        const pageBreakDefinition = ({ firstPage = false, lastPage = false, }) => {
+        const pageBreakDefinition = ({ firstPage = false, }) => {
             const pageContainer = document.createElement("div");
             pageContainer.classList.add("rm-page-break");
             const page = document.createElement("div");
@@ -296,10 +295,9 @@ function createDecoration(state, pageOptions, isInitial = false) {
             pageContainer.append(page, pageBreak);
             return pageContainer;
         };
-        const page = pageBreakDefinition({ firstPage: false, lastPage: false });
+        const page = pageBreakDefinition({ firstPage: false });
         const firstPage = pageBreakDefinition({
             firstPage: true,
-            lastPage: false,
         });
         const fragment = document.createDocumentFragment();
         const pageCount = calculatePageCount(view, pageOptions);
