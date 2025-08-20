@@ -95,7 +95,6 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
   addKeyboardShortcuts() {
     return {
       'Mod-Enter': () => this.editor.commands.insertManualPageBreak(),
-      'Ctrl-Enter': () => this.editor.commands.insertManualPageBreak(),
     };
   },
 });
