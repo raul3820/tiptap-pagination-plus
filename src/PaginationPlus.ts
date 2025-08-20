@@ -134,6 +134,51 @@ export const PaginationPlus = Extension.create<PaginationPlusOptions>({
         margin-top: ${this.options.contentMarginBottom}px !important;
         margin-bottom: ${this.options.marginBottom}px !important;
       }
+      .rm-with-pagination .manual-page-break .breaker,
+      .rm-with-pagination .manual-page-break .rm-page-header,
+      .rm-with-pagination .manual-page-break .rm-page-footer,
+      .rm-with-pagination .manual-page-break .rm-pagination-gap {
+        display: block !important;
+      }
+      .rm-with-pagination .manual-page-break {
+        margin-bottom: ${this.options.pageGap}px !important;
+      }
+      .rm-with-pagination .manual-page-break .page {
+        position: relative;
+        float: left;
+        clear: both;
+        margin-top: ${this.options.pageHeight - this.options.pageHeaderHeight - this.options.pageFooterHeight}px;
+      }
+      .rm-with-pagination .manual-page-break .breaker {
+        width: calc(100% + ${this.options.marginLeft}px + ${this.options.marginRight}px);
+        margin-left: -${this.options.marginLeft}px;
+        margin-right: -${this.options.marginRight}px;
+        position: relative;
+        float: left;
+        clear: both;
+        left: 0px;
+        right: 0px;
+        z-index: 2;
+      }
+      .rm-with-pagination .manual-page-break .rm-page-footer {
+        height: ${this.options.pageFooterHeight}px;
+        overflow: hidden;
+      }
+      .rm-with-pagination .manual-page-break .rm-pagination-gap {
+        height: ${this.options.pageGap}px;
+        border-left: 1px solid;
+        border-right: 1px solid;
+        position: relative;
+        width: calc(100% + 2px) !important;
+        left: -1px;
+        background-color: ${this.options.pageBreakBackground};
+        border-left-color: ${this.options.pageBreakBackground};
+        border-right-color: ${this.options.pageBreakBackground};
+      }
+      .rm-with-pagination .manual-page-break .rm-page-header {
+        height: ${this.options.pageHeaderHeight}px;
+        overflow: hidden;
+      }
     `;
     document.head.appendChild(style);
 
@@ -229,6 +274,17 @@ const calculatePageCount = (
   const pageContentAreaHeight =
     pageOptions.pageHeight - _pageHeaderHeight - _pageFooterHeight;
   const paginationElement = editorDom.querySelector("[data-rm-pagination]");
+
+  // Count manual page breaks in the document
+  const manualPageBreaks: { pos: number }[] = [];
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'manualPageBreak') {
+      manualPageBreaks.push({ pos });
+    }
+    return true;
+  });
+  const manualBreakCount = manualPageBreaks.length;
+
   const currentPageCount = getExistingPageCount(view);
   if (paginationElement) {
     const lastElementOfEditor = editorDom.lastElementChild;
@@ -260,7 +316,9 @@ const calculatePageCount = (
   } else {
     const editorHeight = editorDom.scrollHeight;
     const pageCount = Math.ceil(editorHeight / pageContentAreaHeight);
-    return pageCount <= 0 ? 1 : pageCount;
+    // Add manual page breaks to the calculated page count
+    const totalPageCount = pageCount + manualBreakCount;
+    return totalPageCount <= 0 ? 1 : totalPageCount;
   }
 };
 
@@ -269,35 +327,38 @@ function createDecoration(
   pageOptions: PaginationPlusOptions,
   isInitial: boolean = false
 ): Decoration[] {
-  const pageWidget = Decoration.widget(
-    0,
-    (view) => {
-      const _pageGap = pageOptions.pageGap;
-      const _pageHeaderHeight = (pageOptions.pageHeaderHeight + pageOptions.contentMarginTop + pageOptions.marginTop);
-      const _pageFooterHeight = (pageOptions.pageFooterHeight + pageOptions.contentMarginBottom + pageOptions.marginBottom);
-      const _pageHeight = pageOptions.pageHeight - _pageHeaderHeight - _pageFooterHeight;
-      const _pageBreakBackground = pageOptions.pageBreakBackground;
-  
-      const el = document.createElement("div");
-      el.dataset.rmPagination = "true";
-  
-      const pageBreakDefinition = ({
-        firstPage = false,
-      }: {
-        firstPage: boolean;
-      }) => {
-        const pageContainer = document.createElement("div");
-        pageContainer.classList.add("rm-page-break");
-  
+  const decorations: Decoration[] = [];
+  const _pageGap = pageOptions.pageGap;
+  const _pageHeaderHeight = (pageOptions.pageHeaderHeight + pageOptions.contentMarginTop + pageOptions.marginTop);
+  const _pageFooterHeight = (pageOptions.pageFooterHeight + pageOptions.contentMarginBottom + pageOptions.marginBottom);
+  const _pageHeight = pageOptions.pageHeight - _pageHeaderHeight - _pageFooterHeight;
+  const _pageBreakBackground = pageOptions.pageBreakBackground;
+
+  // Find all manual page breaks in the document
+  const manualPageBreaks: { pos: number }[] = [];
+  state.doc.descendants((node, pos) => {
+    if (node.type.name === 'manualPageBreak') {
+      manualPageBreaks.push({ pos });
+    }
+    return true;
+  });
+
+  // Create decorations for manual page breaks
+  manualPageBreaks.forEach(({ pos }) => {
+    const manualBreakWidget = Decoration.widget(
+      pos,
+      () => {
+        const el = document.createElement("div");
+        el.dataset.rmPagination = "manual";
+        el.classList.add("rm-page-break", "manual-page-break");
+
         const page = document.createElement("div");
         page.classList.add("page");
         page.style.position = "relative";
         page.style.float = "left";
         page.style.clear = "both";
-        page.style.marginTop = firstPage
-          ? `calc(${_pageHeaderHeight}px + ${_pageHeight}px)`
-          : _pageHeight + "px";
-  
+        page.style.marginTop = _pageHeight + "px";
+
         const pageBreak = document.createElement("div");
         pageBreak.classList.add("breaker");
         pageBreak.style.width = `calc(100% + ${pageOptions.marginLeft}px + ${pageOptions.marginRight}px)`;
@@ -309,12 +370,12 @@ function createDecoration(
         pageBreak.style.left = `0px`;
         pageBreak.style.right = `0px`;
         pageBreak.style.zIndex = "2";
-  
+
         const pageFooter = document.createElement("div");
         pageFooter.classList.add("rm-page-footer");
         pageFooter.style.height = pageOptions.pageFooterHeight + "px";
         pageFooter.style.overflow = "hidden";
-  
+
         const footerRight = pageOptions.footerRight.replace(
           "{page}",
           `<span class="rm-page-number"></span>`
@@ -323,19 +384,18 @@ function createDecoration(
           "{page}",
           `<span class="rm-page-number"></span>`
         );
-  
+
         const pageFooterLeft = document.createElement("div");
         pageFooterLeft.classList.add("rm-page-footer-left");
         pageFooterLeft.innerHTML = footerLeft;
-  
+
         const pageFooterRight = document.createElement("div");
         pageFooterRight.classList.add("rm-page-footer-right");
         pageFooterRight.innerHTML = footerRight;
-  
+
         pageFooter.append(pageFooterLeft);
         pageFooter.append(pageFooterRight);
-  
-  
+
         const pageSpace = document.createElement("div");
         pageSpace.classList.add("rm-pagination-gap");
         pageSpace.style.height = _pageGap + "px";
@@ -347,35 +407,133 @@ function createDecoration(
         pageSpace.style.backgroundColor = _pageBreakBackground;
         pageSpace.style.borderLeftColor = _pageBreakBackground;
         pageSpace.style.borderRightColor = _pageBreakBackground;
-  
+
         const pageHeader = document.createElement("div");
         pageHeader.classList.add("rm-page-header");
         pageHeader.style.height = pageOptions.pageHeaderHeight + "px";
         pageHeader.style.overflow = "hidden";
-  
+
         const pageHeaderLeft = document.createElement("div");
         pageHeaderLeft.classList.add("rm-page-header-left");
         pageHeaderLeft.innerHTML = pageOptions.headerLeft;
-  
+
         const pageHeaderRight = document.createElement("div");
         pageHeaderRight.classList.add("rm-page-header-right");
         pageHeaderRight.innerHTML = pageOptions.headerRight;
-  
+
+        pageHeader.append(pageHeaderLeft, pageHeaderRight);
+        pageBreak.append(pageFooter, pageSpace, pageHeader);
+        el.append(page, pageBreak);
+
+        return el;
+      },
+      { side: 1 }
+    );
+    decorations.push(manualBreakWidget);
+  });
+
+  // Create auto page breaks widget
+  const pageWidget = Decoration.widget(
+    0,
+    (view) => {
+      const el = document.createElement("div");
+      el.dataset.rmPagination = "auto";
+      el.id = "pages";
+
+      const pageBreakDefinition = ({
+        firstPage = false,
+      }: {
+        firstPage: boolean;
+      }) => {
+        const pageContainer = document.createElement("div");
+        pageContainer.classList.add("rm-page-break", "auto-page-break");
+
+        const page = document.createElement("div");
+        page.classList.add("page");
+        page.style.position = "relative";
+        page.style.float = "left";
+        page.style.clear = "both";
+        page.style.marginTop = firstPage
+          ? `calc(${_pageHeaderHeight}px + ${_pageHeight}px)`
+          : _pageHeight + "px";
+
+        const pageBreak = document.createElement("div");
+        pageBreak.classList.add("breaker");
+        pageBreak.style.width = `calc(100% + ${pageOptions.marginLeft}px + ${pageOptions.marginRight}px)`;
+        pageBreak.style.marginLeft = `-${pageOptions.marginLeft}px`;
+        pageBreak.style.marginRight = `-${pageOptions.marginRight}px`;
+        pageBreak.style.position = "relative";
+        pageBreak.style.float = "left";
+        pageBreak.style.clear = "both";
+        pageBreak.style.left = `0px`;
+        pageBreak.style.right = `0px`;
+        pageBreak.style.zIndex = "2";
+
+        const pageFooter = document.createElement("div");
+        pageFooter.classList.add("rm-page-footer");
+        pageFooter.style.height = pageOptions.pageFooterHeight + "px";
+        pageFooter.style.overflow = "hidden";
+
+        const footerRight = pageOptions.footerRight.replace(
+          "{page}",
+          `<span class="rm-page-number"></span>`
+        );
+        const footerLeft = pageOptions.footerLeft.replace(
+          "{page}",
+          `<span class="rm-page-number"></span>`
+        );
+
+        const pageFooterLeft = document.createElement("div");
+        pageFooterLeft.classList.add("rm-page-footer-left");
+        pageFooterLeft.innerHTML = footerLeft;
+
+        const pageFooterRight = document.createElement("div");
+        pageFooterRight.classList.add("rm-page-footer-right");
+        pageFooterRight.innerHTML = footerRight;
+
+        pageFooter.append(pageFooterLeft);
+        pageFooter.append(pageFooterRight);
+
+        const pageSpace = document.createElement("div");
+        pageSpace.classList.add("rm-pagination-gap");
+        pageSpace.style.height = _pageGap + "px";
+        pageSpace.style.borderLeft = "1px solid";
+        pageSpace.style.borderRight = "1px solid";
+        pageSpace.style.position = "relative";
+        pageSpace.style.setProperty("width", "calc(100% + 2px)", "important");
+        pageSpace.style.left = "-1px";
+        pageSpace.style.backgroundColor = _pageBreakBackground;
+        pageSpace.style.borderLeftColor = _pageBreakBackground;
+        pageSpace.style.borderRightColor = _pageBreakBackground;
+
+        const pageHeader = document.createElement("div");
+        pageHeader.classList.add("rm-page-header");
+        pageHeader.style.height = pageOptions.pageHeaderHeight + "px";
+        pageHeader.style.overflow = "hidden";
+
+        const pageHeaderLeft = document.createElement("div");
+        pageHeaderLeft.classList.add("rm-page-header-left");
+        pageHeaderLeft.innerHTML = pageOptions.headerLeft;
+
+        const pageHeaderRight = document.createElement("div");
+        pageHeaderRight.classList.add("rm-page-header-right");
+        pageHeaderRight.innerHTML = pageOptions.headerRight;
+
         pageHeader.append(pageHeaderLeft, pageHeaderRight);
         pageBreak.append(pageFooter, pageSpace, pageHeader);
         pageContainer.append(page, pageBreak);
-  
+
         return pageContainer;
       };
-  
+
       const page = pageBreakDefinition({ firstPage: false });
       const firstPage = pageBreakDefinition({
         firstPage: true,
       });
       const fragment = document.createDocumentFragment();
-  
+
       const pageCount = calculatePageCount(view, pageOptions);
-  
+
       for (let i = 0; i < pageCount; i++) {
         if (i === 0) {
           fragment.appendChild(firstPage.cloneNode(true));
@@ -384,12 +542,13 @@ function createDecoration(
         }
       }
       el.append(fragment);
-      el.id = "pages";
-  
+
       return el;
     },
     { side: -1 }
   );
+  decorations.push(pageWidget);
+
   const firstHeaderWidget = Decoration.widget(
     0,
     () => {
@@ -414,5 +573,9 @@ function createDecoration(
     { side: -1 }
   );
 
-  return !isInitial ? [pageWidget, firstHeaderWidget] : [pageWidget];
+  if (!isInitial) {
+    decorations.push(firstHeaderWidget);
+  }
+
+  return decorations;
 }
