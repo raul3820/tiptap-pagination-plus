@@ -17,7 +17,7 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
 
   group: 'block',
 
-  selectable: false,
+  selectable: true,
 
   draggable: false,
 
