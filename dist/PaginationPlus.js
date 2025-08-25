@@ -31,12 +31,18 @@ export const PaginationPlus = Extension.create({
         targetNode.style.marginRight = this.options.marginRight + "px";
         const config = { attributes: true };
         const headerFooterHeight = this.options.pageHeaderHeight + this.options.pageFooterHeight;
-        const _pageHeight = this.options.pageHeight - headerFooterHeight;
+        const _pageContentHeight = this.options.pageHeight - headerFooterHeight - this.options.contentMarginTop - this.options.contentMarginBottom - this.options.marginTop - this.options.marginBottom;
         const style = document.createElement("style");
         style.dataset.rmPaginationStyle = "";
         style.textContent = `
       .rm-with-pagination {
         counter-reset: page-number;
+      }
+      .rm-with-pagination .image-plus-img,
+      .rm-with-pagination .table-plus td,
+      .rm-with-pagination .table-plus th {
+        max-height: ${_pageContentHeight - 10}px;
+        overflow-y: auto;
       }
       .rm-with-pagination .rm-page-footer {
         counter-increment: page-number;
@@ -75,7 +81,7 @@ export const PaginationPlus = Extension.create({
         width: 100%;
       }
       .rm-with-pagination .table-row-group {
-        max-height: ${_pageHeight}px;
+        max-height: ${_pageContentHeight}px;
         overflow-y: auto;
         width: 100%;
       }

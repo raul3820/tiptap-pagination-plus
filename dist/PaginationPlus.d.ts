@@ -1,5 +1,5 @@
 import { Extension } from "@tiptap/core";
-interface PaginationPlusOptions {
+export interface PaginationPlusOptions {
     pageHeight: number;
     pageGap: number;
     pageBreakBackground: string;
@@ -18,4 +18,3 @@ interface PaginationPlusOptions {
     contentMarginBottom: number;
 }
 export declare const PaginationPlus: Extension<PaginationPlusOptions, any>;
-export {};
