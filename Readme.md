@@ -5,8 +5,10 @@
 
 
 # Demo
-
 https://romikmakavana.me/tiptap-pagination/
+
+## Documentation
+https://romikmakavana.me/tiptap
 
 ## Installation
 

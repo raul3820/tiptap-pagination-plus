@@ -38,11 +38,14 @@ export const PaginationPlus = Extension.create({
       .rm-with-pagination {
         counter-reset: page-number;
       }
-      .rm-with-pagination .image-plus-img,
+      .rm-with-pagination .image-plus-wrapper,
       .rm-with-pagination .table-plus td,
       .rm-with-pagination .table-plus th {
         max-height: ${_pageContentHeight - 10}px;
         overflow-y: auto;
+      }
+      .rm-with-pagination .image-plus-wrapper {
+        overflow-y: visible;
       }
       .rm-with-pagination .rm-page-footer {
         counter-increment: page-number;
