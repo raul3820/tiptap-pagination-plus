@@ -99,6 +99,38 @@ function calculateRemainingPageHeight(editor: Editor): number | null {
   }
 }
 
+// Add debouncing to calculateRemainingPageHeight calls
+const debounce = (func: (editor: Editor) => number | null, wait: number) => {
+  let timeout: NodeJS.Timeout | null = null;
+  let lastResult: number | null = null;
+  let isCalculating = false;
+
+  return (editor: Editor): number | null => {
+    // If we're currently calculating, return the last result
+    if (isCalculating) {
+      return lastResult;
+    }
+
+    // Clear existing timeout
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+
+    // Set up new timeout
+    timeout = setTimeout(() => {
+      isCalculating = true;
+      lastResult = func(editor);
+      isCalculating = false;
+      timeout = null;
+    }, wait);
+
+    // Return last known result immediately (may be stale, but better than blocking)
+    return lastResult;
+  };
+};
+
+const debouncedCalculateRemainingPageHeight = debounce(calculateRemainingPageHeight, 100);
+
 export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
   name: "manualPageBreak",
   group: "block",
@@ -283,6 +315,11 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
       // Update height dynamically when the editor changes
       const updateHeight = () => {
         console.log('🔄 [ManualPageBreak] Updating height for node view...');
+        debouncedCalculateRemainingPageHeight(this.editor);
+      };
+
+      const immediateUpdateHeight = () => {
+        console.log('🔄 [ManualPageBreak] Immediate height update for node view...');
         const height = calculateRemainingPageHeight(this.editor);
         console.log('📏 [ManualPageBreak] Node view calculated height:', height);
 
@@ -296,14 +333,15 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
       };
 
       // Initial height calculation
-      updateHeight();
+      immediateUpdateHeight();
 
       // Set up observer for editor changes
       if (this.editor && this.editor.view) {
         console.log('👀 [ManualPageBreak] Setting up mutation observer...');
         const observer = new MutationObserver((mutations) => {
           console.log('🔄 [ManualPageBreak] Mutation observed:', mutations.length, 'changes');
-          updateHeight();
+          // Use debounced update for frequent changes
+          debouncedCalculateRemainingPageHeight(this.editor);
         });
         observer.observe(this.editor.view.dom, {
           childList: true,
@@ -316,7 +354,8 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
         console.log('📡 [ManualPageBreak] Setting up editor update listener...');
         this.editor.on('update', (_update) => {
           console.log('📝 [ManualPageBreak] Editor update event triggered');
-          updateHeight();
+          // Use debounced update for frequent changes
+          debouncedCalculateRemainingPageHeight(this.editor);
         });
       } else {
         console.log('❌ [ManualPageBreak] No editor or editor.view available for observers');
@@ -326,7 +365,7 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
         dom,
         update: (updatedNode) => {
           if (updatedNode.type !== node.type) return false;
-          updateHeight();
+          immediateUpdateHeight();
           return true;
         },
         destroy: () => {
