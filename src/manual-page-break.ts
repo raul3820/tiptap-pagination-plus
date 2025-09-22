@@ -1,12 +1,23 @@
-import { Node, Editor } from "@tiptap/core";
+import { Node, Editor, type EditorEvents } from "@tiptap/core";
 
 export interface ManualPageBreakOptions {
   HTMLAttributes: Record<string, string | number | boolean>;
 }
 
-// Utility function to calculate remaining page height
-function calculateRemainingPageHeight(editor: Editor): number | null {
-  console.log('🔍 [ManualPageBreak] Starting height calculation...');
+interface PaginationPlusOptions {
+  pageHeight: number;
+  pageHeaderHeight: number;
+  pageFooterHeight: number;
+  marginTop: number;
+  marginBottom: number;
+  contentMarginTop: number;
+  contentMarginBottom: number;
+  pageGap: number;
+}
+
+// Utility function to calculate remaining page height FOR A SPECIFIC ELEMENT
+function calculateRemainingPageHeight(editor: Editor, el: HTMLElement): number | null {
+  console.log('🔍 [ManualPageBreak] Starting height calculation (per-element)...');
 
   if (!editor || !editor.view) {
     console.log('❌ [ManualPageBreak] No editor or editor.view available');
@@ -16,17 +27,17 @@ function calculateRemainingPageHeight(editor: Editor): number | null {
   try {
     const paginationExtension = editor.extensionManager.extensions.find(
       (ext: { name: string }) => ext.name === 'PaginationPlus'
-    );
+    ) as { name: 'PaginationPlus'; options: PaginationPlusOptions } | undefined;
 
-    console.log('🔍 [ManualPageBreak] Pagination extension found:', paginationExtension?.name);
+    console.log('🔍 [ManualPageBreak] Pagination extension found:', paginationExtension?.name ?? null);
 
-    if (!paginationExtension || !paginationExtension.options) {
+    if (!paginationExtension) {
       console.log('❌ [ManualPageBreak] No pagination extension or options found');
       return null;
     }
 
     const options = paginationExtension.options;
-    const editorDom = editor.view.dom;
+    const editorDom = editor.view.dom as HTMLElement;
 
     console.log('📐 [ManualPageBreak] Page configuration:', {
       pageHeight: options.pageHeight,
@@ -35,61 +46,86 @@ function calculateRemainingPageHeight(editor: Editor): number | null {
       marginTop: options.marginTop,
       marginBottom: options.marginBottom,
       contentMarginTop: options.contentMarginTop,
-      contentMarginBottom: options.contentMarginBottom
+      contentMarginBottom: options.contentMarginBottom,
     });
 
-    // Calculate available content area height
-    const pageHeaderHeight = options.pageHeaderHeight + options.contentMarginTop + options.marginTop;
-    const pageFooterHeight = options.pageFooterHeight + options.contentMarginBottom + options.marginBottom;
-    const pageContentAreaHeight = options.pageHeight - pageHeaderHeight - pageFooterHeight;
+    // Calculate blocks and available content area height
+    const headerBlock =
+      options.pageHeaderHeight + options.contentMarginTop + options.marginTop;
+    const footerBlock =
+      options.pageFooterHeight + options.contentMarginBottom + options.marginBottom;
+    const pageGap = 'pageGap' in options ? options.pageGap : 0;
+    // Height of the visual breaker between pages (footer + gap + header)
+    const breakerBlockHeight = footerBlock + pageGap + headerBlock;
+
+    const pageContentAreaHeight =
+      options.pageHeight - headerBlock - footerBlock;
 
     console.log('📐 [ManualPageBreak] Calculated dimensions:', {
-      pageHeaderHeight,
-      pageFooterHeight,
-      pageContentAreaHeight
+      headerBlock,
+      footerBlock,
+      pageGap,
+      breakerBlockHeight,
+      pageContentAreaHeight,
     });
 
-    // Find the page break element that contains this position
-    const paginationElement = editorDom.querySelector("[data-rm-pagination]");
+    // Find the pagination container for this element
+    const paginationElement =
+      (el.closest('[data-rm-pagination]') as HTMLElement | null) ??
+      (editorDom.querySelector('[data-rm-pagination]') as HTMLElement | null);
+
     if (!paginationElement) {
-      console.log('❌ [ManualPageBreak] No pagination element found');
+      console.log('❌ [ManualPageBreak] No pagination element found for this node');
       return null;
     }
 
-    // Get all page breaks to determine which page we're on
-    const pageBreaks = paginationElement.querySelectorAll(".breaker");
-    console.log('🔍 [ManualPageBreak] Found page breaks:', pageBreaks.length);
+    // Collect page breaker positions using viewport coordinates (more robust)
+    const breakers = Array.from(
+      paginationElement.querySelectorAll<HTMLElement>('.breaker')
+    );
 
-    // Get the current page's content height
-    const currentPageBreak = pageBreaks[pageBreaks.length - 1] as HTMLElement;
-    if (!currentPageBreak) {
-      console.log('❌ [ManualPageBreak] No current page break found');
-      return null;
-    }
+    console.log('🔍 [ManualPageBreak] Found page breaks:', breakers.length);
 
-    // Calculate how much space is left on the current page
-    const pageTop = currentPageBreak.offsetTop;
-    console.log('📍 [ManualPageBreak] Current page break position:', {
-      pageTop,
-      currentPageBreak: {
-        offsetTop: currentPageBreak.offsetTop,
-        offsetHeight: currentPageBreak.offsetHeight
+    const breakerTops = breakers.map((b) => b.getBoundingClientRect().top);
+
+    // Element top in viewport coordinates
+    const elTop = el.getBoundingClientRect().top;
+
+    // Determine the current page start: last breaker at or above this element
+    let currentIndex = -1;
+    for (let i = 0; i < breakerTops.length; i++) {
+      if (breakerTops[i] <= elTop) {
+        currentIndex = i;
+      } else {
+        break;
       }
+    }
+
+    // Determine the top of the current page content area
+    const paginationTop = paginationElement.getBoundingClientRect().top;
+    const pageStartTop =
+      currentIndex >= 0
+        ? (breakerTops[currentIndex] + breakerBlockHeight)
+        : (paginationTop + headerBlock);
+
+    console.log('📍 [ManualPageBreak] Current page start index/top:', {
+      currentIndex,
+      paginationTop,
+      pageStartTop,
+      elTop,
     });
 
-    // Get the editor content height
-    const editorContentHeight = editorDom.scrollHeight;
-    const usedSpace = editorContentHeight - pageTop;
-    const remainingSpace = pageContentAreaHeight - usedSpace;
+    // Space already used on this page up to this element
+    const usedSpaceOnPage = Math.max(0, elTop - pageStartTop);
+    const remainingSpace = pageContentAreaHeight - usedSpaceOnPage;
 
-    console.log('📐 [ManualPageBreak] Space calculations:', {
-      editorContentHeight,
-      usedSpace,
-      remainingSpace
+    console.log('📐 [ManualPageBreak] Space calculations (per-element):', {
+      usedSpaceOnPage,
+      remainingSpace,
     });
 
     // Return remaining space minus some padding for the manual page break content
-    const finalHeight = Math.max(remainingSpace - 60, 50); // 60px for padding, min 50px
+    const finalHeight = Math.max(remainingSpace - 60, 1); // 60px for padding, min 1px
     console.log('✅ [ManualPageBreak] Final calculated height:', finalHeight, 'px');
 
     return finalHeight;
@@ -99,38 +135,91 @@ function calculateRemainingPageHeight(editor: Editor): number | null {
   }
 }
 
-// Add debouncing to calculateRemainingPageHeight calls
-const debounce = (func: (editor: Editor) => number | null, wait: number) => {
-  let timeout: NodeJS.Timeout | null = null;
-  let lastResult: number | null = null;
-  let isCalculating = false;
 
-  return (editor: Editor): number | null => {
-    // If we're currently calculating, return the last result
-    if (isCalculating) {
-      return lastResult;
+/**
+ * Orchestrates sequential height calculation for ALL manual page break nodes.
+ * Ensures earlier nodes apply their heights before later nodes are measured.
+ */
+const reflowScheduledByRoot = new WeakMap<HTMLElement, boolean>();
+const isApplyingByRoot = new WeakMap<HTMLElement, boolean>();
+const pendingReflowTimeoutByRoot = new WeakMap<HTMLElement, number | null>();
+
+function scheduleManualPageBreakReflow(editor: Editor): void {
+  if (!editor || !editor.view) {
+    return;
+  }
+
+  const root = editor.view.dom as HTMLElement;
+
+  // Debounce per-root to coalesce bursts of mutations/updates
+  const existing = pendingReflowTimeoutByRoot.get(root);
+  if (existing !== null && existing !== undefined) {
+    window.clearTimeout(existing as number);
+  }
+
+  const timeoutId = window.setTimeout(() => {
+    pendingReflowTimeoutByRoot.set(root, null);
+
+    // Avoid overlapping reflows
+    if (reflowScheduledByRoot.get(root) === true) {
+      return;
     }
+    reflowScheduledByRoot.set(root, true);
+    isApplyingByRoot.set(root, true);
 
-    // Clear existing timeout
-    if (timeout) {
-      clearTimeout(timeout);
-    }
+    // Two RAFs: first lets previous writes flush, second ensures layout is stable
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try {
+          const nodes: HTMLElement[] = Array.from(
+            root.querySelectorAll<HTMLElement>('[data-manual-page-break="true"]')
+          );
 
-    // Set up new timeout
-    timeout = setTimeout(() => {
-      isCalculating = true;
-      lastResult = func(editor);
-      isCalculating = false;
-      timeout = null;
-    }, wait);
+          // Sort visually by Y so earlier nodes are measured and applied first
+          nodes.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
 
-    // Return last known result immediately (may be stale, but better than blocking)
-    return lastResult;
-  };
-};
+          for (const el of nodes) {
+            const prevHeight = el.style.height;
+            const prevMinHeight = el.style.minHeight;
 
-const debouncedCalculateRemainingPageHeight = debounce(calculateRemainingPageHeight, 100);
+            // Reset before measurement to avoid self-influence
+            el.style.height = '';
+            el.style.minHeight = '1px';
 
+            const h = calculateRemainingPageHeight(editor, el);
+
+            if (h !== null && h > 1) {
+              const next = `${Math.round(h)}px`;
+              // Only write when value actually changes to avoid infinite MutationObserver loops
+              if (prevHeight !== next || prevMinHeight !== next) {
+                el.style.height = next;
+                el.style.minHeight = next;
+              } else {
+                // Restore original (already equal)
+                el.style.height = prevHeight;
+                el.style.minHeight = prevMinHeight;
+              }
+            } else {
+              // Enforce minimum visual height; only write if different
+              if (prevHeight !== '' || prevMinHeight !== '1px') {
+                el.style.height = '';
+                el.style.minHeight = '1px';
+              } else {
+                el.style.height = prevHeight;
+                el.style.minHeight = prevMinHeight;
+              }
+            }
+          }
+        } finally {
+          isApplyingByRoot.set(root, false);
+          reflowScheduledByRoot.set(root, false);
+        }
+      });
+    });
+  }, 120);
+
+  pendingReflowTimeoutByRoot.set(root, timeoutId);
+}
 export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
   name: "manualPageBreak",
   group: "block",
@@ -169,52 +258,6 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
     };
   },
   
-  calculateRemainingPageHeight() {
-    if (!this.editor || !this.editor.view) return null;
-
-    try {
-      const paginationExtension = this.editor.extensionManager.extensions.find(
-        (ext: { name: string }) => ext.name === 'PaginationPlus'
-      );
-
-      if (!paginationExtension || !paginationExtension.options) {
-        return null;
-      }
-
-      const options = paginationExtension.options;
-      const editorDom = this.editor.view.dom;
-
-      // Calculate available content area height
-      const pageHeaderHeight = options.pageHeaderHeight + options.contentMarginTop + options.marginTop;
-      const pageFooterHeight = options.pageFooterHeight + options.contentMarginBottom + options.marginBottom;
-      const pageContentAreaHeight = options.pageHeight - pageHeaderHeight - pageFooterHeight;
-
-      // Find the page break element that contains this position
-      const paginationElement = editorDom.querySelector("[data-rm-pagination]");
-      if (!paginationElement) return null;
-
-      // Get all page breaks to determine which page we're on
-      const pageBreaks = paginationElement.querySelectorAll(".breaker");
-
-      // Get the current page's content height
-      const currentPageBreak = pageBreaks[pageBreaks.length - 1] as HTMLElement;
-      if (!currentPageBreak) return null;
-
-      // Calculate how much space is left on the current page
-      const pageTop = currentPageBreak.offsetTop;
-
-      // Get the editor content height
-      const editorContentHeight = editorDom.scrollHeight;
-      const usedSpace = editorContentHeight - pageTop;
-      const remainingSpace = pageContentAreaHeight - usedSpace;
-
-      // Return remaining space minus some padding for the manual page break content
-      return Math.max(remainingSpace - 60, 50); // 60px for padding, min 50px
-    } catch (error) {
-      console.warn('Error calculating remaining page height:', error);
-      return null;
-    }
-  },
 
   parseHTML() {
     return [
@@ -225,138 +268,120 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
   },
 
   renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, string | number | boolean> }) {
-    // Calculate dynamic height to fill remaining page space
+    // Height is applied dynamically by the node view per element
     console.log('🎨 [ManualPageBreak] Rendering HTML for manual page break...');
-    const dynamicHeight = this.editor ? calculateRemainingPageHeight(this.editor) : null;
-    console.log('📏 [ManualPageBreak] RenderHTML calculated height:', dynamicHeight);
 
     return [
       "div",
       {
         ...HTMLAttributes,
         style: `
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 10px;
+          position: relative;
+          padding: 0;
           margin: 0;
-          border: 1px dashed #ccc;
-          background-color: #f9f9f9;
-          color: #666;
-          font-size: 12px;
-          border-radius: 4px;
-          min-height: 50px;
-          ${dynamicHeight ? `height: ${dynamicHeight}px;` : ''}
+          border: none;
+          border-top: 1px dashed;
+          border-top: 1px dashed;
+          border-radius: 0;
+          min-height: 1px;
+          height: 1px;
+          overflow: hidden;
+          background: repeating-linear-gradient(
+            45deg,
+            rgba(0, 0, 0, 0.02),
+            rgba(0, 0, 0, 0.02) 12px,
+            rgba(255, 255, 255, 0.02) 12px,
+            rgba(255, 255, 255, 0.02) 16px
+          );
         `,
         "data-manual-page-break": "true",
       },
-      [
-        "span",
-        {
-          style: "display: flex; align-items: center; gap: 8px; z-index: 1; position: relative;",
-        },
-        [
-          "svg",
-          {
-            width: "16",
-            height: "16",
-            viewBox: "0 0 24 24",
-            fill: "none",
-            stroke: "currentColor",
-            "stroke-width": "2",
-            "stroke-linecap": "round",
-            "stroke-linejoin": "round",
-          },
-          [
-            "path",
-            {
-              d: "M12 3v18M3 12h6a3 3 0 0 0 3-3V3M15 12h6a3 3 0 0 1 3 3v6",
-            },
-          ],
-        ],
-        ["span", {}, "Manual Page Break"],
-      ],
     ];
   },
 
   addNodeView() {
     return ({ node, getPos: _getPos }) => {
       const dom = document.createElement('div');
-      const content = document.createElement('span');
 
       dom.className = 'manual-page-break-node';
       dom.setAttribute('data-manual-page-break', 'true');
       dom.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 10px;
-        margin: 0;
-        border: 1px dashed #ccc;
-        background-color: #f9f9f9;
-        color: #666;
-        font-size: 12px;
-        border-radius: 4px;
-        min-height: 50px;
         position: relative;
+        padding: 0;
+        margin: 0;
+        border: none;
+        border-radius: 0;
+        border-top: 1px dashed;
+        border-top: 1px dashed;
+        min-height: 1px;
         width: 100%;
+        height: 1px;
+        overflow: hidden;
+        background: repeating-linear-gradient(
+          45deg,
+          rgba(0, 0, 0, 0.02),
+          rgba(0, 0, 0, 0.02) 12px,
+          rgba(255, 255, 255, 0.02) 12px,
+          rgba(255, 255, 255, 0.02) 16px
+        );
       `;
 
-      content.style.cssText = 'display: flex; align-items: center; gap: 8px; z-index: 1; position: relative;';
-      content.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3v18M3 12h6a3 3 0 0 0 3-3V3M15 12h6a3 3 0 0 1 3 3v6"></path>
-        </svg>
-        <span>Manual Page Break</span>
-      `;
-
-      dom.appendChild(content);
-
-      // Update height dynamically when the editor changes
-      const updateHeight = () => {
-        console.log('🔄 [ManualPageBreak] Updating height for node view...');
-        debouncedCalculateRemainingPageHeight(this.editor);
-      };
-
-      const immediateUpdateHeight = () => {
-        console.log('🔄 [ManualPageBreak] Immediate height update for node view...');
-        const height = calculateRemainingPageHeight(this.editor);
-        console.log('📏 [ManualPageBreak] Node view calculated height:', height);
-
-        if (height && height > 50) {
-          console.log('✅ [ManualPageBreak] Applying height to DOM element:', height, 'px');
-          dom.style.height = `${height}px`;
-          dom.style.minHeight = `${height}px`;
-        } else {
-          console.log('⚠️ [ManualPageBreak] Height too small or null, keeping min-height');
+      const triggerReflow = (): void => {
+        console.log('🔄 [ManualPageBreak] Trigger reflow for all manual breaks...');
+        if (!this.editor) {
+          return;
         }
+        scheduleManualPageBreakReflow(this.editor);
       };
+
+      // Root-level debouncing handled inside scheduleManualPageBreakReflow
 
       // Initial height calculation
-      immediateUpdateHeight();
+      triggerReflow();
 
-      // Set up observer for editor changes
+      let observer: MutationObserver | null = null;
+      const onUpdate = (_props: EditorEvents['update']) => {
+        console.log('📝 [ManualPageBreak] Editor update event triggered');
+        triggerReflow();
+      };
+
+      // Set up observers/listeners
       if (this.editor && this.editor.view) {
         console.log('👀 [ManualPageBreak] Setting up mutation observer...');
-        const observer = new MutationObserver((mutations) => {
-          console.log('🔄 [ManualPageBreak] Mutation observed:', mutations.length, 'changes');
-          // Use debounced update for frequent changes
-          debouncedCalculateRemainingPageHeight(this.editor);
+        observer = new MutationObserver((mutations) => {
+          console.log('🔄 [ManualPageBreak] Mutation observed');
+          if (!this.editor || !this.editor.view) {
+            return;
+          }
+          const rootEl = this.editor.view.dom as HTMLElement;
+
+          // Skip if we are currently applying heights to avoid feedback loop
+          if (isApplyingByRoot.get(rootEl) === true) {
+            return;
+          }
+
+          // Ignore attribute changes originating from manual break nodes
+          for (const m of mutations) {
+            if (m.type === 'attributes' && (m.attributeName === 'style' || m.attributeName === 'class')) {
+              const target = m.target as HTMLElement;
+              if (target.closest('[data-manual-page-break="true"]')) {
+                return;
+              }
+            }
+          }
+
+          triggerReflow();
         });
+
         observer.observe(this.editor.view.dom, {
           childList: true,
           subtree: true,
           attributes: true,
-          attributeFilter: ['style', 'class']
+          attributeFilter: ['style', 'class'],
         });
 
-        // Also listen for editor updates
         console.log('📡 [ManualPageBreak] Setting up editor update listener...');
-        this.editor.on('update', (_update) => {
-          console.log('📝 [ManualPageBreak] Editor update event triggered');
-          // Use debounced update for frequent changes
-          debouncedCalculateRemainingPageHeight(this.editor);
-        });
+        this.editor.on('update', onUpdate);
       } else {
         console.log('❌ [ManualPageBreak] No editor or editor.view available for observers');
       }
@@ -365,14 +390,18 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
         dom,
         update: (updatedNode) => {
           if (updatedNode.type !== node.type) return false;
-          immediateUpdateHeight();
+          triggerReflow();
           return true;
         },
         destroy: () => {
-          if (this.editor) {
-            this.editor.off('update', updateHeight);
+          if (observer) {
+            observer.disconnect();
+            observer = null;
           }
-        }
+          if (this.editor) {
+            this.editor.off('update', onUpdate);
+          }
+        },
       };
     };
   },
