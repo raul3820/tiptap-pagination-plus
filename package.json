@@ -9,11 +9,11 @@
     "README.md",
     "package.json"
   ],
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "watch": "tsc-watch --onSuccess \"echo 'Build completed'\""
-  },
+   "scripts": {
+     "test": "echo \"Error: no test specified\" && exit 1",
+     "build": "tsc",
+     "watch": "tsc-watch --onSuccess \"echo 'Build completed'\""
+   },
   "keywords": [
     "tiptap",
     "tiptap extension",
