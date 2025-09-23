@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "typescript/no-explicit-any": "off",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "MemberExpression[property.name='defaultToolSettings']",
+        "message": "Use settings/api.getToolSettingsNonHook instead."
+      }
+    ]
+  },
+  "ignore": [
+    "docs/**/*",
+    "dist/**/*",
+    "dist-ssr/**/*",
+    "build/**/*",
+    "out/**/*",
+    ".next/**/*",
+    "public/**/*",
+    "node_modules/**/*",
+    "**/*.min.js",
+    "**/*.min.css"
+  ]
+}
