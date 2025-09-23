@@ -339,51 +339,14 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
       // Initial height calculation
       triggerReflow();
 
-      let observer: MutationObserver | null = null;
       const onUpdate = (_props: EditorEvents['update']) => {
-        console.log('📝 [ManualPageBreak] Editor update event triggered');
         triggerReflow();
       };
-
-      // Set up observers/listeners
-      if (this.editor && this.editor.view) {
-        console.log('👀 [ManualPageBreak] Setting up mutation observer...');
-        observer = new MutationObserver((mutations) => {
-          console.log('🔄 [ManualPageBreak] Mutation observed');
-          if (!this.editor || !this.editor.view) {
-            return;
-          }
-          const rootEl = this.editor.view.dom as HTMLElement;
-
-          // Skip if we are currently applying heights to avoid feedback loop
-          if (isApplyingByRoot.get(rootEl) === true) {
-            return;
-          }
-
-          // Ignore attribute changes originating from manual break nodes
-          for (const m of mutations) {
-            if (m.type === 'attributes' && (m.attributeName === 'style' || m.attributeName === 'class')) {
-              const target = m.target as HTMLElement;
-              if (target.closest('[data-manual-page-break="true"]')) {
-                return;
-              }
-            }
-          }
-
-          triggerReflow();
-        });
-
-        observer.observe(this.editor.view.dom, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          attributeFilter: ['style', 'class'],
-        });
-
-        console.log('📡 [ManualPageBreak] Setting up editor update listener...');
+  
+      // Only rely on editor update events to schedule reflow.
+      // Avoid observing DOM mutations inside the ProseMirror view to prevent decoration churn.
+      if (this.editor) {
         this.editor.on('update', onUpdate);
-      } else {
-        console.log('❌ [ManualPageBreak] No editor or editor.view available for observers');
       }
 
       return {
@@ -393,11 +356,9 @@ export const ManualPageBreak = Node.create<ManualPageBreakOptions>({
           triggerReflow();
           return true;
         },
+        // This node is atomic and self-managed; ignore internal DOM mutations.
+        ignoreMutation: () => true,
         destroy: () => {
-          if (observer) {
-            observer.disconnect();
-            observer = null;
-          }
           if (this.editor) {
             this.editor.off('update', onUpdate);
           }
